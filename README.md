@@ -3,6 +3,7 @@
 Very simple and minimalistic ML model HTTP service.
 
 **Author:** Tural Mahmudov
+
 **Time spent:** 2 hours
 
 ## Overview
