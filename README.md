@@ -30,6 +30,13 @@ The code is clean, type-checked. It uses the best practices in Python, REST API 
 
 ## Usage
 
+### Initial Setup
+
+Before running, you have to:
+
+- manually add users and models to the database;
+- implement desired algorithms in `api/algorithms.py`.
+
 ### Start Up
 
 You can start the system by running

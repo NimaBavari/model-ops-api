@@ -56,7 +56,7 @@ def list_users() -> Tuple[Dict[str, Any], int]:
         return {"message": "Not authenticated."}, 401
 
     all_users = sess.query(User).all()
-    return all_users, 200
+    return {"all_users": all_users}, 200
 
 
 @app.route("/users/<int:user_id>/", methods=["GET"])
@@ -72,11 +72,11 @@ def get_user(user_id: int) -> Tuple[Dict[str, Any], int]:
     if not user:
         return {"message": "Not found."}, 404
 
-    return user, 200
+    return {"user": user}, 200
 
 
-@app.route("/users/<int:user_id>/models/", methods=["GET"])
-def list_models(user_id: int) -> Tuple[Dict[str, Any], int]:
+@app.route("/models/", methods=["GET"])
+def list_models() -> Tuple[Dict[str, Any], int]:
     log_data = "Endpoint: %s, Method: %s, Data: %s" % (request.endpoint, request.method, request.json)
     threading.Thread(target=log_request, args=(log_data,)).start()
 
@@ -84,42 +84,50 @@ def list_models(user_id: int) -> Tuple[Dict[str, Any], int]:
     if not curr_user:
         return {"message": "Not authenticated."}, 401
 
-    user = sess.get(User, user_id)
-    if not user:
-        return {"message": "Not found."}, 404
-
-    if user != curr_user:
-        return {"message": "Not authorized."}, 403
-
-    all_models = sess.query(Model).filter(Model.user_id == user_id).all()
-    return all_models, 200
+    all_models = sess.query(Model).filter(Model.user_id == curr_user.user_id).all()
+    return {"all_models": all_models}, 200
 
 
-@app.route("/users/<int:user_id>/models/<int:model_id>/predict/", methods=["GET"])
-def predict_with_model(user_id: int, model_id: int) -> Tuple[Dict[str, Any], int]:
+@app.route("/models/<int:model_id>/", methods=["GET"])
+def get_model(model_id: int) -> Tuple[Dict[str, Any], int]:
     log_data = "Endpoint: %s, Method: %s, Data: %s" % (request.endpoint, request.method, request.json)
     threading.Thread(target=log_request, args=(log_data,)).start()
 
     curr_user = session.get("current_user", None)
     if not curr_user:
         return {"message": "Not authenticated."}, 401
-
-    user = sess.get(User, user_id)
-    if not user:
-        return {"message": "Not found."}, 404
-
-    if user != curr_user:
-        return {"message": "Not authorized."}, 403
 
     model = sess.get(Model, model_id)
-    if not model or model.user_id != user_id:
+    if not model:
         return {"message": "Not found."}, 404
 
+    if curr_user.id != model.user_id:
+        return {"message": "Not authorized."}, 403
+
+    return {"model": model}, 200
+
+
+@app.route("/models/<int:model_id>/predict/", methods=["GET"])
+def predict_with_model(model_id: int) -> Tuple[Dict[str, Any], int]:
+    log_data = "Endpoint: %s, Method: %s, Data: %s" % (request.endpoint, request.method, request.json)
+    threading.Thread(target=log_request, args=(log_data,)).start()
+
+    curr_user = session.get("current_user", None)
+    if not curr_user:
+        return {"message": "Not authenticated."}, 401
+
+    model = sess.get(Model, model_id)
+    if not model:
+        return {"message": "Not found."}, 404
+
+    if curr_user.id != model.user_id:
+        return {"message": "Not authorized."}, 403
+
     try:
+        exec("from .algorithms import %s" % model.algorithm)
         algorithm = eval(model.algorithm)
-    except NameError:
-        # import the relevant algorithm
-        pass
+    except ImportError:
+        return {"message": "Algorithm not defined."}, 400
 
     output = algorithm(model.inputs, model.weights)
     return {"output": output}, 200
