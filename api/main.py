@@ -84,7 +84,7 @@ def list_models() -> Tuple[Dict[str, Any], int]:
     if not curr_user:
         return {"message": "Not authenticated."}, 401
 
-    all_models = sess.query(Model).filter(Model.user_id == curr_user.user_id).all()
+    all_models = sess.query(Model).filter(Model.user_id == curr_user.id).all()
     return {"all_models": all_models}, 200
 
 
